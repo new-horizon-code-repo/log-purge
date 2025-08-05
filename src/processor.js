@@ -117,18 +117,71 @@ async function processFile(filePath, options) {
 }
 
 /**
+ * Checks if a path is a directory and converts it to a glob pattern
+ */
+async function processPatternInput(inputPattern, options) {
+  try {
+    const stats = await fs.stat(inputPattern);
+    if (stats.isDirectory()) {
+      const extensions = options.extensions.split(',').map(ext => ext.trim());
+      // Normalize path separators for glob - always use forward slashes
+      const normalizedPath = inputPattern.replace(/\\/g, '/');
+      // Ensure path doesn't end with slash for consistent glob pattern
+      const cleanPath = normalizedPath.endsWith('/') ? normalizedPath.slice(0, -1) : normalizedPath;
+      const globPattern = `${cleanPath}/**/*.{${extensions.join(',')}}`;
+      return { pattern: globPattern, isFolder: true, folderPath: inputPattern };
+    }
+  } catch (error) {
+    // Not a directory, treat as glob pattern
+  }
+  return { pattern: inputPattern, isFolder: false, folderPath: null };
+}
+
+/**
+ * Groups files by their parent directories for batch processing statistics
+ */
+function groupFilesByFolder(files) {
+  const folderGroups = {};
+  files.forEach(file => {
+    const folder = path.dirname(file);
+    if (!folderGroups[folder]) {
+      folderGroups[folder] = [];
+    }
+    folderGroups[folder].push(file);
+  });
+  return folderGroups;
+}
+
+/**
  * Main execution function.
  */
 async function run(pattern, options) {
   const startTime = Date.now();
   const spinner = ora(chalk.cyan('Discovering files...')).start();
-  const files = await glob(pattern, { ignore: options.ignore, nodir: true });
+  
+  // Process input pattern (could be folder path or glob)
+  const { pattern: processedPattern, isFolder, folderPath } = await processPatternInput(pattern, options);
+  
+  if (isFolder) {
+    spinner.text = chalk.cyan(`Scanning folder: ${folderPath} for ${options.extensions} files...`);
+  }
+  
+  const files = await glob(processedPattern, { ignore: options.ignore, nodir: true });
   
   if (files.length === 0) {
-    spinner.warn(chalk.yellow(`No files found matching pattern: ${pattern}`));
+    spinner.warn(chalk.yellow(`No files found matching pattern: ${processedPattern}`));
     return;
   }
-  spinner.succeed(chalk.green(`Found ${files.length} files to analyze.`));
+  
+  // Enhanced folder statistics
+  let folderInfo = '';
+  if (options.batchFolders || isFolder) {
+    const folderGroups = groupFilesByFolder(files);
+    const folderCount = Object.keys(folderGroups).length;
+    folderInfo = ` across ${folderCount} folders`;
+  }
+  
+  spinner.succeed(chalk.green(`Found ${files.length} files${folderInfo} to analyze.`));
 
   if (!options.dryRun && !options.yes) {
     const proceed = await askForConfirmation(
@@ -185,6 +238,26 @@ async function run(pattern, options) {
     summary.push(`${chalk.red('Files with Errors:')}   ${chalk.bold(errorFiles.length)}`);
   }
 
+  // Enhanced batch folder statistics
+  if (options.batchFolders || isFolder) {
+    const folderGroups = groupFilesByFolder(files);
+    const folderStats = Object.entries(folderGroups).map(([folder, folderFiles]) => {
+      const folderResults = results.filter(r => folderFiles.includes(r.filePath));
+      const folderModified = folderResults.filter(r => r.status === 'modified');
+      const folderChanges = folderModified.reduce((sum, f) => sum + f.changes, 0);
+      return { folder, total: folderFiles.length, modified: folderModified.length, changes: folderChanges };
+    });
+    
+    console.log(chalk.blue.bold('\n📁 Folder Statistics:'));
+    folderStats.forEach(stat => {
+      if (stat.modified > 0) {
+        console.log(`  ${chalk.cyan(stat.folder)}: ${stat.modified}/${stat.total} files modified (${stat.changes} changes)`);
+      } else {
+        console.log(`  ${chalk.gray(stat.folder)}: ${stat.total} files scanned (clean)`);
+      }
+    });
+  }
+
   console.log(boxen(summary.join('\n'), {
     padding: 1,
     margin: 1,
@@ -209,7 +282,9 @@ async function run(pattern, options) {
         totalChanges,
         executionTime,
         options,
-        pattern
+        pattern: processedPattern,
+        isFolder,
+        folderPath
       });
   }
 }
@@ -226,7 +301,9 @@ async function generateMarkdownReport(filename, {
   totalChanges,
   executionTime,
   options,
-  pattern
+  pattern,
+  isFolder,
+  folderPath
 }) {
   const reportName = typeof filename === 'string' ? filename : 'log-purge-report.md';
   const spinner = ora(chalk.cyan(`Generating detailed markdown report to ${reportName}...`)).start();
@@ -255,7 +332,10 @@ async function generateMarkdownReport(filename, {
   reportContent += `| **Execution Date** | ${new Date().toLocaleString()} |\n`;
   reportContent += `| **Execution Time** | ${executionTime}ms (${(executionTime/1000).toFixed(2)}s) |\n`;
   reportContent += `| **Operation Mode** | ${options.mode.toUpperCase()} |\n`;
-  reportContent += `| **Glob Pattern** | \`${pattern}\` |\n`;
+  reportContent += `| **${isFolder ? 'Folder Path' : 'Glob Pattern'}** | \`${isFolder ? folderPath : pattern}\` |\n`;
+  if (isFolder) {
+    reportContent += `| **File Extensions** | \`${options.extensions}\` |\n`;
+  }
   reportContent += `| **Dry Run Mode** | ${options.dryRun ? '✅ Yes' : '❌ No'} |\n`;
   reportContent += `| **Files Scanned** | ${files.length} |\n`;
   reportContent += `| **Files Modified** | ${modifiedFiles.length} |\n`;
@@ -267,6 +347,28 @@ async function generateMarkdownReport(filename, {
     reportContent += `| **Total Lines Reduced** | ${totalLinesReduced} |\n`;
   }
   reportContent += `\n`;
+
+  // Folder Statistics (if batch processing was used)
+  if (options.batchFolders || isFolder) {
+    const folderGroups = groupFilesByFolder(files);
+    const folderStats = Object.entries(folderGroups).map(([folder, folderFiles]) => {
+      const folderResults = results.filter(r => folderFiles.includes(r.filePath));
+      const folderModified = folderResults.filter(r => r.status === 'modified');
+      const folderChanges = folderModified.reduce((sum, f) => sum + f.changes, 0);
+      return { folder, total: folderFiles.length, modified: folderModified.length, changes: folderChanges };
+    });
+
+    reportContent += `## 📁 Folder Statistics\n\n`;
+    reportContent += `| Folder | Files Scanned | Files Modified | Console Statements ${options.mode === 'remove' ? 'Removed' : options.mode === 'comment' ? 'Commented' : 'Replaced'} |\n`;
+    reportContent += `|--------|---------------|----------------|----------|\n`;
+    folderStats
+      .sort((a, b) => b.changes - a.changes)
+      .forEach(stat => {
+        const relativePath = stat.folder.replace(process.cwd(), '.');
+        reportContent += `| \`${relativePath}\` | ${stat.total} | ${stat.modified} | ${stat.changes} |\n`;
+      });
+    reportContent += `\n`;
+  }
 
   // Console Log Type Breakdown
   if (Object.keys(logTypeStats).length > 0) {

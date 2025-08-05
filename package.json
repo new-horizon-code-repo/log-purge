@@ -1,6 +1,6 @@
 {
     "name": "log-purge",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "A breathtakingly beautiful and powerful CLI to purge console logs from your codebase.",
     "main": "src/processor.js",
     "bin": {
@@ -21,16 +21,19 @@
       "tool",
       "javascript",
       "typescript",
+      "batch",
+      "folder",
+      "processing",
       "newhorizoncode"
     ],
     "repository": {
       "type": "git",
-      "url": "https://github.com/new-horizon-code/log-purge.git"
+      "url": "https://github.com/new-horizon-code-repo/log-purge.git"
     },
     "bugs": {
-      "url": "https://github.com/new-horizon-code/log-purge/issues"
+      "url": "https://github.com/new-horizon-code-repo/log-purge/issues"
     },
-    "homepage": "https://github.com/new-horizon-code/log-purge#readme",
+    "homepage": "https://github.com/new-horizon-code-repo/log-purge#readme",
     "author": "New Horizon Code (https://newhorizoncode.io)",
     "license": "MIT",
     "dependencies": {

@@ -41,6 +41,35 @@ Log-Purge detects and processes all these console methods:
 
 The tool also handles multiline console statements and various formatting styles.
 
+## 🗂️ Batch Folder Processing
+
+Log-Purge excels at processing entire folder structures with intelligent batch processing:
+
+### Folder Path Input
+Instead of glob patterns, you can provide folder paths directly:
+```bash
+log-purge ./src                    # Process all default extensions in src/
+log-purge ./components --extensions "js,ts,vue"  # Custom extensions
+```
+
+### Enhanced Statistics
+Use `--batch-folders` to get detailed per-folder statistics:
+```bash
+log-purge "**/*.js" --batch-folders
+```
+
+This shows:
+- Files processed per folder
+- Console statements found/removed per folder
+- Clean folders (no console statements)
+- Folder-level performance metrics
+
+### Intelligent File Discovery
+- **Auto-detection**: Automatically detects if input is a folder vs glob pattern
+- **Extension filtering**: Configurable file extensions for folder processing
+- **Recursive scanning**: Processes all subfolders automatically
+- **Ignore patterns**: Supports `.gitignore`-style ignore patterns
+
 ## 📦 Installation
 
 Install globally using npm to use `log-purge` in any project:
@@ -79,7 +108,19 @@ log-purge "**/*.{js,ts}" --ignore "node_modules/**" --dry-run
 log-purge "src/components/**/*.vue" --mode replace --replaceWith "pino.info("
 ```
 
-**5. Generate a markdown report after the run:**
+**5. Process an entire folder and all subfolders:**
+```bash
+log-purge ./src --extensions "js,ts,jsx,tsx"
+# Automatically scans all JS/TS files in src folder recursively
+```
+
+**6. Enable detailed folder statistics in batch mode:**
+```bash
+log-purge "src/**/*.js" --batch-folders --report
+# Shows per-folder statistics and generates detailed report
+```
+
+**7. Generate a markdown report after the run:**
 ```bash
 log-purge "src/**/*.js" --report
 # This will create log-purge-report.md in the current directory
@@ -94,6 +135,8 @@ log-purge "src/**/*.js" --report
 | `--mode <mode>`         | `-m`  | `remove`, `comment`, or `replace`                                         | `remove` |
 | `--replaceWith <str>`   | `-r`  | The string to use in `replace` mode.                                      | `N/A`    |
 | `--ignore <pattern>`    | `-i`  | Glob pattern for files to ignore.                                         | `N/A`    |
+| `--extensions <exts>`   |       | File extensions for folder processing (comma-separated).                  | `js,ts,jsx,tsx,vue` |
+| `--batch-folders`       |       | Enable detailed folder statistics and reporting.                          | `false`  |
 | `--dry-run`             |       | Show what would change without modifying files.                           | `false`  |
 | `--yes`                 | `-y`  | Skip the interactive confirmation prompt.                                 | `false`  |
 | `--report [filename]`   |       | Generate a markdown summary report.                                       | `false`  |
