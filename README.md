@@ -1,8 +1,5 @@
 # 🔥 Log-Purge 🔥
 
-[![NPM Version](https://img.shields.io/npm/v/log-purge.svg)](https://www.npmjs.com/package/log-purge)
-[![License](https://img.shields.io/npm/l/log-purge.svg)](https://github.com/new-horizon-code-repo/log-purge/blob/main/LICENSE)
-
 A breathtakingly beautiful and powerful CLI from [New Horizon Code](https://newhorizoncode.io) to purge console statements from your codebase. Removes `console.log`, `console.error`, `console.warn`, `console.info`, `console.debug`, `console.assert`, `console.dir`, `console.table`, and `window.console.*` calls. Perfect for cleaning up debug statements before shipping to production, ensuring code quality and security.
 
 ![Log-Purge in Action](purge.png)
