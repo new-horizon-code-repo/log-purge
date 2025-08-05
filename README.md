@@ -5,8 +5,8 @@
 
 A breathtakingly beautiful and powerful CLI from [New Horizon Code](https://newhorizoncode.io) to purge console statements from your codebase. Removes `console.log`, `console.error`, `console.warn`, `console.info`, `console.debug`, `console.assert`, `console.dir`, `console.table`, and `window.console.*` calls. Perfect for cleaning up debug statements before shipping to production, ensuring code quality and security.
 
-![Log-Purge in Action](https://i.imgur.com/your-demo-gif-here.gif)
-*(Image: A GIF showing the tool running with its colorful output and progress bar)*
+![Log-Purge in Action](purge.png)
+
 
 ---
 
